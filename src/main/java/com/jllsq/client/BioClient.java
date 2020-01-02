@@ -17,6 +17,7 @@ public class BioClient {
             bufferedWriter.write("31313123\r\n");
             bufferedWriter.flush();
             Thread.sleep(10000);
+            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
