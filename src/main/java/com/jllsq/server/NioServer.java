@@ -6,6 +6,7 @@ import sun.nio.ch.EPollSelectorProvider;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
@@ -32,10 +33,11 @@ public class NioServer extends Thread {
     @Override
     public void run() {
         try {
-            ServerSocket serverSocket = new ServerSocket(8000);
-            ServerSocketChannel serverSocketChannel = serverSocket.getChannel();
+            ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+            serverSocketChannel.bind(new InetSocketAddress("0.0.0.0",8000));
+            serverSocketChannel.configureBlocking(false);
             Selector selector = new EPollSelectorProvider().openSelector();
-            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT | SelectionKey.OP_WRITE);
+            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
             while (true) {
                 selector.select();
                 Iterator<SelectionKey> selectionKeyIterator = selector.selectedKeys().iterator();
@@ -50,7 +52,7 @@ public class NioServer extends Thread {
         }
     }
 
-    private void service(SelectionKey key) {
+    private void service(SelectionKey key) throws IOException {
         if (key.isAcceptable()) {
             doAcceptable(key);
         } else if (key.isWritable()) {
@@ -69,17 +71,25 @@ public class NioServer extends Thread {
     private void doWrite(SelectionKey key) {
     }
 
-    private void doAcceptable(SelectionKey key) {
-        SocketChannel channel = (SocketChannel) key.channel();
-        byte[] data = createConnectionData();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(data.length);
-        byteBuffer.put(data);
-        byteBuffer.flip();
+    private void doAcceptable(SelectionKey key) throws IOException {
+        ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
+        SocketChannel channel = null;
         try {
-            channel.write(byteBuffer);
+            channel = serverSocketChannel.accept();
+            channel.configureBlocking(false);
+            channel.finishConnect();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        byte[] data = createConnectionData();
+        try {
+            assert channel != null;
+            channel.write(ByteBuffer.wrap(data));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private byte[] createConnectionData() {
@@ -93,7 +103,7 @@ public class NioServer extends Thread {
                     CONNECTION_BYTES, LRLN,
                     SIGNAL, idBytesLen, LRLN,
                     idBytes, LRLN);
-
+            System.out.println(new String(result));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -102,7 +112,8 @@ public class NioServer extends Thread {
 
 
     public static void main(String[] args) {
-
+        NioServer nioServer = new NioServer();
+        nioServer.start();
     }
 
 }

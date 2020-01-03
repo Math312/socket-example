@@ -16,4 +16,21 @@ public class ByteArrayUtil {
         return result;
     }
 
+    public static byte[] readLine(byte[] data,int startIndex) {
+        if (data.length <= startIndex) {
+            return null;
+        }
+        int end = startIndex;
+        for (int i = startIndex;i < data.length - 1;i ++) {
+            if (data[i] == '\r' && data[i+1] == '\n') {
+                break;
+            }
+            end ++;
+        }
+        int len = end - startIndex;
+        byte[] result = new byte[len];
+        System.arraycopy(data,startIndex,result,0,len);
+        return result;
+    }
+
 }
